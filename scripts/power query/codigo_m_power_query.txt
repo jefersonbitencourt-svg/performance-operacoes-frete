@@ -1,0 +1,392 @@
+// =========================================
+// BASE CONSOLIDADA DINÂMICA POR PASTA
+// =========================================
+
+let
+
+    // =========================================
+    // LEITURA DINÂMICA DA PASTA
+    // =========================================
+
+    Fonte = Folder.Files(endereco),
+
+    #"Arquivos Ocultos Filtrados" =
+        Table.SelectRows(
+            Fonte,
+            each [Attributes]?[Hidden]? <> true
+        ),
+
+    #"Importar CSV" =
+        Table.AddColumn(
+            #"Arquivos Ocultos Filtrados",
+            "CSV",
+            each
+                Table.PromoteHeaders(
+                    Csv.Document(
+                        [Content],
+                        [
+                            Delimiter = ";",
+                            Encoding = 65001,
+                            QuoteStyle = QuoteStyle.Csv
+                        ]
+                    ),
+                    [PromoteAllScalars = true]
+                )
+        ),
+
+#"Outras Colunas Removidas" =
+    Table.SelectColumns(
+        #"Importar CSV",
+        {"Name", "CSV"}
+    ),
+
+#"Coluna de Tabela Expandida" =
+    Table.ExpandTableColumn(
+        #"Outras Colunas Removidas",
+        "CSV",
+        Table.ColumnNames(#"Importar CSV"{0}[CSV])
+    ),
+
+    // =========================================
+    // Reduzindo dataframe para manter as colunas necessárias
+    // =========================================
+
+    #"Colunas Selecionadas" =
+        Table.SelectColumns(
+            #"Coluna de Tabela Expandida",
+            {
+                "OS",
+                "Cód. cliente",
+                "Nome fantasia",
+                "Cidade P1",
+                "Endereço",
+                "Obs endereço",
+                "Nº nota",
+                "Latitude",
+                "Longitude",
+                "Cidade",
+                "Estado",
+                "Cód. prof.",
+                "Nome prof.",
+                "Data/Hora",
+                "Data/Hora Alocado",
+                "Data solicitado",
+                "Hora solicitado",
+                "Data Chegada",
+                "Hora Chegada",
+                "Data Saida",
+                "Hora Saida",
+                "Categoria",
+                "Valor",
+                "Distância",
+                "Valor prof.",
+                "Finalizado",
+                "Execução Comp.",
+                "Velocidade Média",
+                "Solicitante",
+                "Ocorrência",
+                "Motivo"
+            },
+            MissingField.Ignore
+        ),
+
+    // =========================================
+    // tipagem das colunas
+    // =========================================
+
+    #"Tipo Alterado" =
+        Table.TransformColumnTypes(
+            #"Colunas Selecionadas",
+            {
+                {"OS", type text},
+                {"Cód. cliente", Int64.Type},
+                {"Nome fantasia", type text},
+                {"Cidade P1", type text},
+                {"Endereço", type text},
+                {"Obs endereço", type text},
+                {"Nº nota", type text},
+                {"Latitude", type number},
+                {"Longitude", type number},
+                {"Cidade", type text},
+                {"Estado", type text},
+                {"Cód. prof.", type text},
+                {"Nome prof.", type text},
+                {"Data/Hora", type datetime},
+                {"Data/Hora Alocado", type datetime},
+                {"Data solicitado", type date},
+                {"Hora solicitado", type time},
+                {"Data Chegada", type date},
+                {"Hora Chegada", type time},
+                {"Data Saida", type date},
+                {"Hora Saida", type time},
+                {"Categoria", type text},
+                {"Valor", type number},
+                {"Distância", type number},
+                {"Valor prof.", type number},
+                {"Finalizado", type datetime},
+                {"Execução Comp.", type time},
+                {"Velocidade Média", type number},
+                {"Solicitante", type text},
+                {"Ocorrência", type text},
+                {"Motivo", type text}
+            },
+            "pt-BR"
+        ),
+
+    // =========================================
+    // criando primary key para remover duplicatas futuramente
+    // =========================================
+
+    CriarChavePrimária =
+        Table.AddColumn(
+            #"Tipo Alterado",
+            "DuplicataKey",
+            each
+                Text.Trim(Text.From([#"OS"])) &
+                Text.Combine(
+                    List.Select(
+                        Text.Split(Text.Trim(Text.Clean([Endereço])), " "),
+                        each _ <> ""
+                    ),
+                    " "
+                ) &
+                Text.From([Cód. cliente]) &
+                Text.From([#"Cód. prof."])
+        ),
+
+    #"Duplicatas Removidas" =
+        Table.Distinct(CriarChavePrimária, {"DuplicataKey"}),
+
+    // =========================================
+    // PONTO ENTREGA
+    // =========================================
+
+    InserirPontosDeEntrega =
+        Table.AddColumn(
+            #"Duplicatas Removidas",
+            "Ponto_Entrega",
+            each Text.BeforeDelimiter([Endereço], " -"),
+            type text
+        ),
+
+    AjustarEndereço =
+        Table.AddColumn(
+            InserirPontosDeEntrega,
+            "End. Ajustado",
+            each Text.AfterDelimiter([Endereço], "- "),
+            type text
+        ),
+
+    // =========================================
+    // RETORNOS
+    // =========================================
+
+    GerarRetornos =
+        Table.AddColumn(
+            AjustarEndereço,
+            "Retorno",
+            each if Text.Contains([Motivo], "Erro")
+                then "Com Retorno"
+                else "Sem Retorno",
+            type text
+        ),
+
+    // =========================================
+    // CONCAT CLIENTE (solicitação do gestor que mantenha o formato)
+    // =========================================
+
+    TratarIdentificaçãoCliente =
+        Table.AddColumn(
+            GerarRetornos,
+            "concat",
+            each Text.From([Cód. cliente]) & "-" & [Nome fantasia],
+            type text
+        ),
+
+    // =========================================
+    // normalizando nome dos profissionais
+    // =========================================
+
+    TratarNomeDoProfissional =
+        Table.TransformColumns(
+            TratarIdentificaçãoCliente,
+            {{"Nome prof.", Text.Proper}}
+        ),
+
+    // =========================================
+    // CRIANDO COLUNA SEMANA CONCAT (NOVO)
+    // =========================================
+
+    CriarFiltroDeSemanas =
+        Table.AddColumn(
+            TratarNomeDoProfissional,
+            "Semana concat",
+            each
+                let
+                    data = [Data solicitado],
+                    diaDaSemana = Date.DayOfWeek(data, Day.Monday),
+                    dataInicioSemana = Date.AddDays(data, -diaDaSemana),
+                    dataFimSemana = Date.AddDays(dataInicioSemana, 6),
+                    texto =
+                        Date.ToText(dataInicioSemana, "dd/MM/yyyy") &
+                        " a " &
+                        Date.ToText(dataFimSemana, "dd/MM/yyyy")
+                in
+                    texto,
+            type text
+        ),
+
+    // =========================================
+    // DETERMINAR TIPO DE SERVIÇO (NOVO)
+    // =========================================
+
+    DefinirTipoDeServiço =
+        Table.AddColumn(
+            CriarFiltroDeSemanas,
+            "TipoServico",
+            each if [Ponto_Entrega] = "Ponto 1" then "Coleta" else "Entrega",
+            type text
+        ),
+
+    // =========================================
+    // HORA FORMATADA PARA EIXO X (NOVO)
+    // =========================================
+
+    InserirHoraFormatada =
+        Table.AddColumn(
+            DefinirTipoDeServiço,
+            "HoraFormatada",
+            each Text.PadStart(
+                Text.From(Time.Hour([Hora solicitado])),
+                2,
+                "0"
+            ) & " Hrs",
+            type text
+        ),
+
+    // =========================================
+    // FAIXA DE KM (NOVO)
+    // =========================================
+
+    CriarFiltroFaixaKM =
+        Table.AddColumn(
+            InserirHoraFormatada,
+            "Faixa_KM",
+            each
+                let
+                    dist = if [Distância] = null then 0 else [Distância]
+                in
+                    if dist <= 10 then "0-10 KM 🏍" else
+                    if dist <= 15 then "11-15 KM 🏍" else
+                    if dist <= 20 then "16-20 KM 🏍" else
+                    if dist <= 25 then "21-25 KM 🏍" else
+                    if dist <= 30 then "26-30 KM 🏍" else
+                    if dist <= 35 then "31-35 KM 🏍" else
+                    if dist <= 40 then "36-40 KM 🏍" else
+                    if dist <= 45 then "41-45 KM 🏍" else
+                    if dist <= 50 then "46-50 KM 🏍" else
+                    if dist <= 55 then "51-55 KM 🏍" else
+                    if dist <= 60 then "56-60 KM 🏍" else
+                    if dist <= 65 then "61-65 KM 🏍" else
+                    if dist <= 70 then "66-70 KM 🏍" else
+                    if dist <= 75 then "71-75 KM 🏍" else
+                    if dist <= 80 then "76-80 KM 🏍" else
+                    if dist <= 85 then "81-85 KM 🏍" else
+                    if dist <= 90 then "86-90 KM 🏍" else
+                    if dist <= 95 then "91-95 KM 🏍" else
+                    if dist <= 100 then "96-100 KM 🏍" else
+                    ">100 KM 🏍",
+            type text
+        ),
+
+    // =========================================
+    // DATAHORA SOLICITADO (NOVO)
+    // =========================================
+
+    InserirDataHoraSolicitado =
+        Table.AddColumn(
+            CriarFiltroFaixaKM,
+            "DataHoraSolicitado",
+            each [Data solicitado] & [Hora solicitado],
+            type datetime
+        ),
+
+    // =========================================
+    // DATAHORA SAÍDA (NOVO)
+    // =========================================
+
+    InserirDataHoraSaída =
+        Table.AddColumn(
+            InserirDataHoraSolicitado,
+            "DataHoraSaida",
+            each [Data Saida] & [Hora Saida],
+            type datetime
+        ),
+
+    // =========================================
+    // INÍCIO DA SEMANA (NOVO)
+    // =========================================
+
+    InserirInicioSemana =
+        Table.AddColumn(
+            InserirDataHoraSaída,
+            "DataInicioSemana",
+            each
+                let
+                    data = [Data solicitado],
+                    diaDaSemana = Date.DayOfWeek(data, Day.Monday),
+                    dataInicioSemana = Date.AddDays(data, -diaDaSemana)
+                in
+                    dataInicioSemana,
+            type date
+        ),
+
+    // =========================================
+    // REMOVER COLUNAS NÃO NECESSÁRIAS (NOVO)
+    // =========================================
+
+    #"Outras Colunas Removidas2" =
+        Table.SelectColumns(InserirInicioSemana,{
+            "OS", "Cód. cliente", "Nome fantasia", "Solicitante", "Endereço", "Nº nota",
+            "Latitude", "Longitude", "Cidade", "Estado", "Cód. prof.", "Nome prof.",
+            "Data/Hora Alocado", "Data solicitado", "Hora solicitado", "Data Chegada",
+            "Hora Chegada", "Data Saida", "Hora Saida", "Categoria", "Valor", "Distância",
+            "Valor prof.", "Finalizado", "Execução Comp.", "Ocorrência", "Velocidade Média",
+            "Ponto_Entrega", "End. Ajustado", "Retorno", "concat", "Semana concat",
+            "TipoServico", "HoraFormatada", "Faixa_KM", "DataHoraSolicitado", "DataHoraSaida",
+            "DataInicioSemana"
+        }),
+
+    // =========================================
+    // MÊS (NOVO)
+    // =========================================
+
+    #"Mês Inserido" =
+        Table.AddColumn(#"Outras Colunas Removidas2", "Mês", each Date.Month([Data solicitado]), Int64.Type),
+
+    // =========================================
+    // NORMALIZAR CIDADES (NOVO)
+    // =========================================
+
+    #"Normalizar Cidades Base" =
+        Table.TransformColumns(
+            #"Mês Inserido",
+            {{"Cidade", each Text.Upper(Text.Trim(Text.Clean(_))) }}
+        ),
+
+    // =========================================
+    // ANO (NOVO)
+    // =========================================
+
+    #"Ano Inserido" = 
+        Table.AddColumn(#"Normalizar Cidades Base", "Ano", each Date.Year([Data solicitado]), Int64.Type),
+
+    // =========================================
+    // NOME DO MÊS (NOVO)
+    // =========================================
+
+    #"Nome do Mês Inserido" = 
+        Table.AddColumn(#"Ano Inserido", "Nome do Mês", each Date.MonthName([Data solicitado]), type text)
+
+in
+    #"Nome do Mês Inserido"
