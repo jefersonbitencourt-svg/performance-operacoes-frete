@@ -135,6 +135,6 @@ Como este projeto não depende de banco de dados nem de scripts em Python, a rep
 
 ## 11. Galeria do Projeto
 
-![Preview do Dashboard](assets/screenshots/credito_a.jpeg)
+![Preview do Dashboard](assets/screenshots/performance_frete_a.jpeg)
 
 🔗 **[Acessar demonstração interativa no Portfólio](https://jefersonbitencourt-svg.github.io/portifolio-data-analyst/#projeto/performance-operacoes-frete)**
