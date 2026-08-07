@@ -70,7 +70,7 @@ Como não havia banco de dados intermediário nem infraestrutura de servidor, o 
 | ETL / unificação das fontes | Power Query (linguagem M) |
 | Modelagem de dados | Star Schema (Power BI Desktop) |
 | Métricas e indicadores | DAX |
-| Visualização | Power BI — layout one-page (single canvas) |
+| Visualização | Power BI — layout one-page |
 
 ## 5. Engenharia de Dados em Power Query
 
