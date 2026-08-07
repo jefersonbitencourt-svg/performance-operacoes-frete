@@ -109,11 +109,7 @@ Modelo relacional em **Star Schema**, unificando as dimensões operacionais com 
 - **Padronização de timestamps** — tratamento de fusos horários e cálculo de durações exatas entre os marcos de cada ordem de serviço (solicitação, chegada, saída, finalização), fundamentais para as métricas de SLA.
 - **Canvas único** — organização de um grande volume de informação técnica e gerencial em uma única página longa, sem poluição visual, atendendo à exigência da diretoria por uma visão one-page.
 
-## 9. Galeria do Projeto
-
-*(inserir prints do dashboard aqui, ex.: `assets/screenshots/frete_a.jpeg`)*
-
-## 10. Como Executar
+## 9. Como Executar
 
 Como este projeto não depende de banco de dados nem de scripts em Python, a reprodução do fluxo se concentra na configuração do repositório de arquivos e na engenharia de transformação em Power Query.
 
@@ -131,8 +127,14 @@ Como este projeto não depende de banco de dados nem de scripts em Python, a rep
 5. Construa as medidas DAX de SLA, repasse e faturamento.
 6. Publique o relatório em um único canvas (one-page), organizando os componentes por densidade de informação.
 
-## 11. Impacto e Resultados
+## 10. Impacto e Resultados
 
 - **Visão de SLA por cliente** — identificação de gargalos de prazo por cliente e por região.
 - **Otimização de rotas** — base analítica para otimizar rotas por faixa de quilometragem.
 - **Auditoria de rentabilidade** — rentabilidade real da operação auditável por região e parceiro comercial.
+
+## 11. Galeria do Projeto
+
+![Preview do Dashboard](assets/screenshots/credito_a.jpeg)
+
+🔗 **[Acessar demonstração interativa no Portfólio](https://jefersonbitencourt-svg.github.io/portifolio-data-analyst/#projeto/performance-operacoes-frete)**
