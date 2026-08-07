@@ -19,9 +19,9 @@
 6. [Modelagem de Dados (Resumida)](#6-modelagem-de-dados-resumida)
 7. [Recursos e Funcionalidades do Dashboard](#7-recursos-e-funcionalidades-do-dashboard)
 8. [Obstáculos Técnicos e Soluções](#8-obstáculos-técnicos-e-soluções)
-9. [Galeria do Projeto](#9-galeria-do-projeto)
-10. [Como Executar](#10-como-executar)
-11. [Impacto e Resultados](#11-impacto-e-resultados)
+9. [Como Executar](#9-como-executar)
+10. [Impacto e Resultados](#10-impacto-e-resultados)
+11. [Galeria do Projeto](#11-galeria-do-projeto)
 
 ---
 
