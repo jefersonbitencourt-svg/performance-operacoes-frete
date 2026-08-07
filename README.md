@@ -1,4 +1,4 @@
-# Documentação Técnica - Dashboard de Operações e Performance de Frete
+# Documentação Técnica - Dashboard de Operações e Performance de Frete B2B
 
 ![Power Query](https://img.shields.io/badge/Power_Query-M_Language-F2C811?logo=powerbi&logoColor=black)
 ![Google Drive](https://img.shields.io/badge/Google_Drive-Reposit%C3%B3rio_CSV-4285F4?logo=googledrive&logoColor=white)
